@@ -65,6 +65,7 @@ export const ResultPage = () => {
             score={lastScore}
             highScore={highScore}
             isNewHighScore={isNewHighScore}
+            levelId={parseInt(levelId)}
           />
 
           <div className="space-y-6">

@@ -2,14 +2,16 @@ import { motion } from 'framer-motion';
 import { Trophy, Clock, Users, AlertTriangle, Target, TrendingUp } from 'lucide-react';
 import { ScoreResult } from '../../types';
 import { formatTime } from '../../utils/helpers';
+import { getLevelById } from '../../data/levels';
 
 interface ScorePanelProps {
   score: ScoreResult;
   highScore: ScoreResult | null;
   isNewHighScore: boolean;
+  levelId?: number;
 }
 
-export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps) => {
+export const ScorePanel = ({ score, highScore, isNewHighScore, levelId }: ScorePanelProps) => {
   const gradeColors: Record<string, string> = {
     S: 'from-yellow-400 to-amber-500',
     A: 'from-emerald-400 to-green-500',
@@ -18,10 +20,75 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
     D: 'from-red-400 to-rose-500',
   };
 
+  const colorClasses: Record<string, { bg: string; text: string; gradient: string }> = {
+    emerald: {
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-600',
+      gradient: 'from-emerald-400 to-emerald-600',
+    },
+    amber: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-600',
+      gradient: 'from-amber-400 to-amber-600',
+    },
+    sky: {
+      bg: 'bg-sky-100',
+      text: 'text-sky-600',
+      gradient: 'from-sky-400 to-sky-600',
+    },
+    red: {
+      bg: 'bg-red-100',
+      text: 'text-red-600',
+      gradient: 'from-red-400 to-red-600',
+    },
+    violet: {
+      bg: 'bg-violet-100',
+      text: 'text-violet-600',
+      gradient: 'from-violet-400 to-violet-600',
+    },
+  };
+
+  const calculateProgressWidth = (
+    label: string,
+    value: number,
+    numericValue: number
+  ): number => {
+    switch (label) {
+      case '工位恢复率':
+        return value;
+      case '平均入场延误': {
+        const maxDelay = 20;
+        const normalized = Math.max(0, Math.min(1, numericValue / maxDelay));
+        return (1 - normalized) * 100;
+      }
+      case '助理空闲比例': {
+        const deviation = Math.abs(numericValue - 30);
+        const maxDeviation = 30;
+        const normalized = Math.max(0, Math.min(1, deviation / maxDeviation));
+        return (1 - normalized) * 100;
+      }
+      case '事件遗漏': {
+        const maxMissed = 4;
+        const normalized = Math.max(0, Math.min(1, numericValue / maxMissed));
+        return (1 - normalized) * 100;
+      }
+      case '总耗时': {
+        const level = levelId ? getLevelById(levelId) : null;
+        const targetTime = level?.targetTime || 120;
+        const maxTime = targetTime * 1.5;
+        const normalized = Math.max(0, Math.min(1, numericValue / maxTime));
+        return (1 - normalized) * 100;
+      }
+      default:
+        return 50;
+    }
+  };
+
   const scoreItems = [
     {
       label: '工位恢复率',
       value: `${score.stationRecoveryRate}%`,
+      numericValue: score.stationRecoveryRate,
       icon: Target,
       color: 'emerald',
       best: 100,
@@ -30,6 +97,7 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
     {
       label: '平均入场延误',
       value: `${score.admissionDelay}秒`,
+      numericValue: score.admissionDelay,
       icon: Clock,
       color: 'amber',
       best: 0,
@@ -38,6 +106,7 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
     {
       label: '助理空闲比例',
       value: `${score.assistantIdleRatio}%`,
+      numericValue: score.assistantIdleRatio,
       icon: Users,
       color: 'sky',
       best: 30,
@@ -46,6 +115,7 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
     {
       label: '事件遗漏',
       value: `${score.missedEvents}个`,
+      numericValue: score.missedEvents,
       icon: AlertTriangle,
       color: 'red',
       best: 0,
@@ -54,6 +124,7 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
     {
       label: '总耗时',
       value: formatTime(score.totalTime),
+      numericValue: score.totalTime,
       icon: TrendingUp,
       color: 'violet',
       best: 0,
@@ -105,50 +176,48 @@ export const ScorePanel = ({ score, highScore, isNewHighScore }: ScorePanelProps
       </div>
 
       <div className="space-y-4">
-        {scoreItems.map((item, index) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + index * 0.1 }}
-            className="bg-white rounded-2xl p-4 shadow-md border border-amber-100"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 bg-${item.color}-100 rounded-xl flex items-center justify-center`}
-                >
-                  <item.icon className={`w-5 h-5 text-${item.color}-600`} />
+        {scoreItems.map((item, index) => {
+          const colors = colorClasses[item.color];
+          const progressWidth = calculateProgressWidth(item.label, item.numericValue, item.numericValue);
+          return (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 + index * 0.1 }}
+              className="bg-white rounded-2xl p-4 shadow-md border border-amber-100"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center`}>
+                    <item.icon className={`w-5 h-5 ${colors.text}`} />
+                  </div>
+                  <span className="font-semibold text-amber-900">{item.label}</span>
                 </div>
-                <span className="font-semibold text-amber-900">{item.label}</span>
-              </div>
-              <div className="text-right">
-                <p className={`text-xl font-bold text-${item.color}-600`}>
-                  {item.value}
-                </p>
-                {item.highScoreValue && (
-                  <p className="text-xs text-amber-500">
-                    纪录: {item.highScoreValue}
+                <div className="text-right">
+                  <p className={`text-xl font-bold ${colors.text}`}>
+                    {item.value}
                   </p>
-                )}
+                  {item.highScoreValue && (
+                    <p className="text-xs text-amber-500">
+                      纪录: {item.highScoreValue}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{
-                  width: item.label === '平均入场延误' || item.label === '事件遗漏' || item.label === '总耗时'
-                    ? `${Math.max(0, 100 - (parseFloat(item.value) / 50) * 100)}%`
-                    : item.label === '助理空闲比例'
-                    ? `${100 - Math.abs(parseFloat(item.value) - 30) * 2}%`
-                    : item.value,
-                }}
-                transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
-                className={`h-full bg-gradient-to-r from-${item.color}-400 to-${item.color}-600 rounded-full`}
-              />
-            </div>
-          </motion.div>
-        ))}
+              <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${Math.max(0, Math.min(100, progressWidth))}%`,
+                  }}
+                  transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
+                  className={`h-full bg-gradient-to-r ${colors.gradient} rounded-full`}
+                />
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

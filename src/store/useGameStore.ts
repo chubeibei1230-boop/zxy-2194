@@ -17,6 +17,7 @@ import {
   shouldTriggerEvent,
   generateRandomEvent,
   applyEventEffect,
+  revertEventEffect,
 } from '../systems/eventSystem';
 import { calculateScore, getImprovementSuggestion } from '../systems/scoringSystem';
 
@@ -50,7 +51,7 @@ const createInitialState = (level: LevelConfig): GameState => {
     id: generateId(),
     number: i + 1,
     status: 'idle',
-    cleanupProgress: 0,
+    cleanupProgress: 100,
   }));
 
   const assistants: Assistant[] = Array.from({ length: level.assistants }, (_, i) => ({
@@ -62,7 +63,7 @@ const createInitialState = (level: LevelConfig): GameState => {
     totalBusyTime: 0,
   }));
 
-  const initialTasks = generateBatchTasks(1, [], level.stations);
+  const initialTasks = generateBatchTasks(1, stations.filter(s => s.status === 'needs-cleaning'), level.stations);
 
   return {
     currentLevel: level,
@@ -257,7 +258,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       const event = activeEvents[eventIndex];
 
-      const { tasks, stations: newStations, assistants: newAssistants } = applyEventEffect(
+      const { tasks, stations: newStations, assistants: newAssistants } = revertEventEffect(
         event,
         taskQueue,
         stations,
@@ -306,7 +307,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       elapsedTime += deltaTime;
 
-      const newAssistants = assistants.map((a) => {
+      let newAssistants = assistants.map((a) => {
         if (a.status === 'away') {
           const newAwayTime = a.awayTimeRemaining - deltaTime;
           if (newAwayTime <= 0) {
@@ -422,20 +423,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
             newStations.length
           );
           newTasks = [...newTasks, ...newBatchTasks];
-        } else {
-          const pendingOrInProgress = newTasks.some(
-            (t) => t.status === 'pending' || t.status === 'in-progress'
-          );
-          if (!pendingOrInProgress) {
-            return {
-              ...state,
-              gameState: {
-                ...gameState,
-                gameStatus: 'completed',
-                elapsedTime,
-              },
-            };
-          }
         }
       }
 
@@ -455,6 +442,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ) {
         const newEvent = generateRandomEvent(newTasks, newStations, newAssistants);
         if (newEvent) {
+          const { tasks, stations, assistants: updatedAssistants } = applyEventEffect(
+            newEvent,
+            newTasks,
+            newStations,
+            newAssistants
+          );
+          newTasks = tasks;
+          newStations = stations;
+          newAssistants = updatedAssistants;
           newActiveEvents.push(newEvent);
           state.lastEventTime = elapsedTime;
         }

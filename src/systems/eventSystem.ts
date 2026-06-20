@@ -169,3 +169,62 @@ export const applyEventEffect = (
 
   return { tasks: updatedTasks, stations: updatedStations, assistants: updatedAssistants };
 };
+
+export const revertEventEffect = (
+  event: GameEvent,
+  tasks: Task[],
+  stations: Station[],
+  assistants: Assistant[]
+): { tasks: Task[]; stations: Station[]; assistants: Assistant[] } => {
+  const updatedTasks = [...tasks];
+  const updatedStations = [...stations];
+  const updatedAssistants = [...assistants];
+
+  switch (event.type) {
+    case 'cleanup-difficulty': {
+      const taskIndex = updatedTasks.findIndex((t) => t.id === event.affectedTaskId);
+      if (taskIndex !== -1) {
+        updatedTasks[taskIndex] = {
+          ...updatedTasks[taskIndex],
+          estimatedTime: Math.ceil(updatedTasks[taskIndex].estimatedTime / 1.5),
+          remainingTime: Math.ceil(updatedTasks[taskIndex].remainingTime / 1.5),
+        };
+      }
+      break;
+    }
+    case 'material-delay': {
+      const taskIndex = updatedTasks.findIndex((t) => t.id === event.affectedTaskId);
+      if (taskIndex !== -1) {
+        updatedTasks[taskIndex] = {
+          ...updatedTasks[taskIndex],
+          estimatedTime: Math.max(1, updatedTasks[taskIndex].estimatedTime - 10),
+          remainingTime: Math.max(1, updatedTasks[taskIndex].remainingTime - 10),
+        };
+      }
+      break;
+    }
+    case 'early-arrival': {
+      const taskIndex = updatedTasks.findIndex((t) => t.id === event.affectedTaskId);
+      if (taskIndex !== -1) {
+        updatedTasks[taskIndex] = {
+          ...updatedTasks[taskIndex],
+          priority: 4,
+        };
+      }
+      break;
+    }
+    case 'assistant-leave': {
+      const assistantIndex = updatedAssistants.findIndex((a) => a.id === event.affectedAssistantId);
+      if (assistantIndex !== -1) {
+        updatedAssistants[assistantIndex] = {
+          ...updatedAssistants[assistantIndex],
+          status: 'idle',
+          awayTimeRemaining: 0,
+        };
+      }
+      break;
+    }
+  }
+
+  return { tasks: updatedTasks, stations: updatedStations, assistants: updatedAssistants };
+};
