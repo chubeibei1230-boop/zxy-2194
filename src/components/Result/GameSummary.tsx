@@ -13,6 +13,33 @@ export const GameSummary = ({ gameState }: GameSummaryProps) => {
   const handledEvents = eventLog.filter((e) => e.handled).length;
   const missedEvents = eventLog.filter((e) => !e.handled).length;
 
+  const colorClasses: Record<string, { card: string; iconBg: string; iconText: string; valueText: string }> = {
+    emerald: {
+      card: 'bg-emerald-50 border-emerald-200',
+      iconBg: 'bg-emerald-100',
+      iconText: 'text-emerald-600',
+      valueText: 'text-emerald-700',
+    },
+    sky: {
+      card: 'bg-sky-50 border-sky-200',
+      iconBg: 'bg-sky-100',
+      iconText: 'text-sky-600',
+      valueText: 'text-sky-700',
+    },
+    amber: {
+      card: 'bg-amber-50 border-amber-200',
+      iconBg: 'bg-amber-100',
+      iconText: 'text-amber-600',
+      valueText: 'text-amber-700',
+    },
+    violet: {
+      card: 'bg-violet-50 border-violet-200',
+      iconBg: 'bg-violet-100',
+      iconText: 'text-violet-600',
+      valueText: 'text-violet-700',
+    },
+  };
+
   const summaryItems = [
     {
       label: '完成批次',
@@ -53,25 +80,29 @@ export const GameSummary = ({ gameState }: GameSummaryProps) => {
       </h3>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
-        {summaryItems.map((item, index) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7 + index * 0.1 }}
-            className={`bg-${item.color}-50 rounded-xl p-4 border border-${item.color}-200`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 bg-${item.color}-100 rounded-lg flex items-center justify-center`}>
-                <item.icon className={`w-5 h-5 text-${item.color}-600`} />
+        {summaryItems.map((item, index) => {
+          const colors = colorClasses[item.color];
+
+          return (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.7 + index * 0.1 }}
+              className={`${colors.card} rounded-xl p-4 border`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 ${colors.iconBg} rounded-lg flex items-center justify-center`}>
+                  <item.icon className={`w-5 h-5 ${colors.iconText}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">{item.label}</p>
+                  <p className={`text-xl font-bold ${colors.valueText}`}>{item.value}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">{item.label}</p>
-                <p className={`text-xl font-bold text-${item.color}-700`}>{item.value}</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
 
       {eventLog.length > 0 && (
