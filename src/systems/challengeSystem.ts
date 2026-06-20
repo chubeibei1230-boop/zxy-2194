@@ -17,9 +17,9 @@ const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
     type: 'batch-admission-time',
     title: '准时入场大师',
     descriptions: [
-      '在指定时间内完成前 {target} 批次的入场安排',
-      '把控节奏，前 {target} 批次入场不能拖沓',
-      '高效调度，前 {target} 批次准时入场',
+      '前 3 批次入场总耗时不超过 {target} 秒',
+      '把控节奏，前 3 批入场总耗时 ≤ {target} 秒',
+      '高效调度，前 3 批次入场在 {target} 秒内完成',
     ],
     icon: '⏰',
     unit: '秒',
@@ -145,6 +145,27 @@ export const generateChallenges = (level: LevelConfig, count: number = randomInt
   });
 };
 
+const hasEnoughData = (challengeType: string, gameState: GameState): boolean => {
+  switch (challengeType) {
+    case 'batch-admission-time':
+      return gameState.admissionTimes.length >= 3;
+    case 'max-missed-events':
+      return gameState.elapsedTime > 10 || gameState.eventLog.length > 0;
+    case 'station-recovery-rate':
+      return gameState.totalStationsUsed > 0;
+    case 'assistant-high-efficiency':
+      return gameState.assistants.some((a) => a.totalIdleTime + a.totalBusyTime > 0);
+    case 'total-time-budget':
+      return gameState.elapsedTime > 5;
+    case 'zero-admission-delay':
+      return gameState.admissionTimes.length > 0;
+    case 'min-assistant-idle':
+      return gameState.assistants.some((a) => a.totalIdleTime + a.totalBusyTime > 0);
+    default:
+      return true;
+  }
+};
+
 export const updateChallengeProgress = (
   challenges: Challenge[],
   gameState: GameState
@@ -152,6 +173,7 @@ export const updateChallengeProgress = (
   return challenges.map((challenge) => {
     let currentValue = 0;
     let isCompleted = false;
+    const hasData = hasEnoughData(challenge.type, gameState);
 
     switch (challenge.type) {
       case 'batch-admission-time': {
@@ -169,7 +191,9 @@ export const updateChallengeProgress = (
       }
       case 'max-missed-events': {
         currentValue = gameState.eventLog.filter((e) => !e.handled).length;
-        isCompleted = currentValue <= challenge.targetValue;
+        if (hasData) {
+          isCompleted = currentValue <= challenge.targetValue;
+        }
         break;
       }
       case 'station-recovery-rate': {
@@ -177,10 +201,12 @@ export const updateChallengeProgress = (
           currentValue = Math.round(
             (gameState.totalStationsCleaned / gameState.totalStationsUsed) * 100
           );
+          if (hasData) {
+            isCompleted = currentValue >= challenge.targetValue;
+          }
         } else {
-          currentValue = 100;
+          currentValue = 0;
         }
-        isCompleted = currentValue >= challenge.targetValue;
         break;
       }
       case 'assistant-high-efficiency': {
@@ -193,14 +219,18 @@ export const updateChallengeProgress = (
           }
         }
         currentValue = efficientCount;
-        isCompleted = currentValue >= challenge.targetValue;
+        if (hasData) {
+          isCompleted = currentValue >= challenge.targetValue;
+        }
         break;
       }
       case 'total-time-budget': {
         if (gameState.currentLevel) {
           const ratio = (gameState.elapsedTime / gameState.currentLevel.targetTime) * 100;
           currentValue = Math.round(ratio);
-          isCompleted = currentValue <= challenge.targetValue;
+          if (hasData) {
+            isCompleted = currentValue <= challenge.targetValue;
+          }
         }
         break;
       }
@@ -210,7 +240,9 @@ export const updateChallengeProgress = (
             return sum + Math.max(0, t.actual - t.planned);
           }, 0)
         );
-        isCompleted = currentValue <= challenge.targetValue;
+        if (hasData) {
+          isCompleted = currentValue <= challenge.targetValue;
+        }
         break;
       }
       case 'min-assistant-idle': {
@@ -220,7 +252,9 @@ export const updateChallengeProgress = (
         const totalIdleTime = gameState.assistants.reduce((sum, a) => sum + a.totalIdleTime, 0);
         if (totalAssistantTime > 0) {
           currentValue = Math.round((totalIdleTime / totalAssistantTime) * 100);
-          isCompleted = currentValue <= challenge.targetValue;
+          if (hasData) {
+            isCompleted = currentValue <= challenge.targetValue;
+          }
         }
         break;
       }

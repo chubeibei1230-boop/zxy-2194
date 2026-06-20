@@ -173,8 +173,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   completeGame: () => {
     const { gameState } = get();
-    const score = calculateScore(gameState);
-    const isNew = saveHighScore(gameState.currentLevel!.id, score);
 
     let challengeResults: ChallengeResult[] = [];
     let challengeBonus = 0;
@@ -183,16 +181,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       challengeBonus = calculateChallengeBonus(challengeResults);
     }
 
+    const finalScore = calculateScore(gameState, challengeBonus);
+    const isNew = saveHighScore(gameState.currentLevel!.id, finalScore);
+
     set((state) => ({
       gameState: {
         ...state.gameState,
         gameStatus: 'completed',
         challengeResults,
       },
-      lastScore: {
-        ...score,
-        totalScore: Math.min(100, score.totalScore + challengeBonus),
-      },
+      lastScore: finalScore,
       isNewHighScore: isNew,
       highScores: loadHighScores(),
       lastChallengeResults: challengeResults,
@@ -548,8 +546,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           totalStationsCleaned,
           currentBatch,
         };
-        const score = calculateScore(finalState);
-        const isNew = saveHighScore(currentLevel!.id, score);
 
         let challengeResults: ChallengeResult[] = [];
         let challengeBonus = 0;
@@ -558,10 +554,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           challengeBonus = calculateChallengeBonus(challengeResults);
         }
 
-        const finalScore = {
-          ...score,
-          totalScore: Math.min(100, score.totalScore + challengeBonus),
-        };
+        const finalScore = calculateScore(finalState, challengeBonus);
+        const isNew = saveHighScore(currentLevel!.id, finalScore);
 
         return {
           ...state,

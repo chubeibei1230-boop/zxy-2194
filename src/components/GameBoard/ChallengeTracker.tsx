@@ -158,27 +158,39 @@ const ChallengeProgressItem = ({ challenge }: ChallengeProgressItemProps) => {
 
 const calculateProgress = (challenge: Challenge): number => {
   switch (challenge.type) {
-    case 'batch-admission-time':
-    case 'total-time-budget':
+    case 'batch-admission-time': {
+      if (challenge.currentValue === 0 || challenge.targetValue === 0) return 0;
+      const ratio = challenge.currentValue / challenge.targetValue;
+      if (challenge.currentValue <= challenge.targetValue) {
+        return Math.min(100, 50 + (1 - ratio) * 50);
+      }
+      return Math.max(0, 50 - (ratio - 1) * 50);
+    }
+    case 'total-time-budget': {
+      if (challenge.targetValue === 0) return 0;
+      const ratio = challenge.currentValue / challenge.targetValue;
+      if (ratio <= 1) {
+        return Math.min(100, ratio * 80);
+      }
+      return Math.max(0, 80 - (ratio - 1) * 100);
+    }
     case 'zero-admission-delay':
     case 'max-missed-events':
     case 'min-assistant-idle': {
-      if (challenge.targetValue === 0) return challenge.isCompleted ? 100 : 0;
+      if (challenge.targetValue === 0) return 0;
       const ratio = challenge.currentValue / challenge.targetValue;
-      if (challenge.type === 'batch-admission-time' || challenge.type === 'total-time-budget'
-        || challenge.type === 'zero-admission-delay' || challenge.type === 'min-assistant-idle'
-        || challenge.type === 'max-missed-events') {
-        const progress = challenge.currentValue <= challenge.targetValue
-          ? 100
-          : Math.max(0, 100 - (ratio - 1) * 100);
-        return progress;
+      if (challenge.currentValue <= challenge.targetValue) {
+        return Math.min(100, (1 - ratio * 0.5) * 100);
       }
-      return Math.min(100, ratio * 100);
+      return Math.max(0, 50 - (ratio - 1) * 100);
     }
-    case 'station-recovery-rate':
+    case 'station-recovery-rate': {
+      if (challenge.currentValue === 0) return 0;
       return Math.min(100, (challenge.currentValue / challenge.targetValue) * 100);
-    case 'assistant-high-efficiency':
-      return Math.min(100, (challenge.currentValue / challenge.targetValue) * 100);
+    }
+    case 'assistant-high-efficiency': {
+      return Math.min(100, (challenge.currentValue / Math.max(1, challenge.targetValue)) * 100);
+    }
     default:
       return 0;
   }

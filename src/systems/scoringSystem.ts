@@ -1,6 +1,6 @@
 import { ScoreResult, Grade, GameState } from '../types';
 
-export const calculateScore = (state: GameState): ScoreResult => {
+export const calculateScore = (state: GameState, additionalBonus: number = 0): ScoreResult => {
   const {
     totalStationsUsed,
     totalStationsCleaned,
@@ -47,7 +47,8 @@ export const calculateScore = (state: GameState): ScoreResult => {
   const timeRatio = Math.min(totalTime / targetTime, 2);
   const timeScore = Math.max(0, 100 - (timeRatio - 1) * 100) * 0.15;
 
-  const totalScore = Math.round(stationScore + delayScore + idleScore + eventScore + timeScore);
+  const baseScore = Math.round(stationScore + delayScore + idleScore + eventScore + timeScore);
+  const totalScore = Math.min(100, baseScore + additionalBonus);
 
   let grade: Grade;
   if (totalScore >= 90) grade = 'S';
