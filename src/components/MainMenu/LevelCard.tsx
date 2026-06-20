@@ -1,14 +1,15 @@
-import { Play, Trophy, Lock } from 'lucide-react';
+import { Play, Trophy, Sparkles } from 'lucide-react';
 import { LevelConfig, ScoreResult } from '../../types';
 import { formatTime } from '../../utils/helpers';
 
 interface LevelCardProps {
   level: LevelConfig;
   highScore: ScoreResult | null;
-  onClick: () => void;
+  onNormalPlay: () => void;
+  onChallengePlay: () => void;
 }
 
-export const LevelCard = ({ level, highScore, onClick }: LevelCardProps) => {
+export const LevelCard = ({ level, highScore, onNormalPlay, onChallengePlay }: LevelCardProps) => {
   const difficultyColors: Record<string, string> = {
     low: 'bg-emerald-500',
     medium: 'bg-amber-500',
@@ -26,9 +27,8 @@ export const LevelCard = ({ level, highScore, onClick }: LevelCardProps) => {
   return (
     <div
       className="group relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 shadow-lg 
-                 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-amber-200
+                 hover:shadow-xl transition-all duration-300 border-2 border-amber-200
                  hover:border-amber-400 transform hover:-translate-y-1"
-      onClick={onClick}
     >
       <div className="absolute top-4 right-4">
         <span
@@ -81,15 +81,36 @@ export const LevelCard = ({ level, highScore, onClick }: LevelCardProps) => {
         </div>
       )}
 
-      <button
-        className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl
-                   font-semibold flex items-center justify-center gap-2 shadow-md
-                   group-hover:from-amber-600 group-hover:to-orange-600 transition-all duration-300
-                   group-hover:shadow-lg"
-      >
-        <Play className="w-5 h-5" />
-        开始游戏
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNormalPlay();
+          }}
+          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl
+                     font-semibold flex items-center justify-center gap-2 shadow-md
+                     hover:from-amber-600 hover:to-orange-600 transition-all duration-300
+                     hover:shadow-lg"
+        >
+          <Play className="w-5 h-5" />
+          普通模式
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onChallengePlay();
+          }}
+          className="w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white py-3 rounded-xl
+                     font-semibold flex items-center justify-center gap-2 shadow-md
+                     hover:from-violet-600 hover:to-fuchsia-600 transition-all duration-300
+                     hover:shadow-lg relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+          <Sparkles className="w-5 h-5" />
+          订单挑战模式
+        </button>
+      </div>
     </div>
   );
 };

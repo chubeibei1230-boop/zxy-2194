@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Trophy } from 'lucide-react';
+import { BookOpen, Trophy, Sparkles, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LevelCard } from '../components/MainMenu/LevelCard';
 import { TutorialContent } from '../components/Tutorial/TutorialContent';
@@ -10,9 +10,15 @@ import { useGameStore } from '../store/useGameStore';
 export const MainMenuPage = () => {
   const navigate = useNavigate();
   const [showTutorial, setShowTutorial] = useState(false);
-  const { highScores } = useGameStore();
+  const { highScores, startGame } = useGameStore();
 
-  const handleLevelClick = (levelId: number) => {
+  const handleNormalPlay = (levelId: number) => {
+    startGame(levelId, false);
+    navigate(`/game/${levelId}`);
+  };
+
+  const handleChallengePlay = (levelId: number) => {
+    startGame(levelId, true);
     navigate(`/game/${levelId}`);
   };
 
@@ -61,6 +67,47 @@ export const MainMenuPage = () => {
         </motion.div>
 
         <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-6"
+        >
+          <div className="bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50 rounded-2xl p-5 border-2 border-violet-200 shadow-md">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-400 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-violet-900 mb-1 flex items-center gap-2">
+                  ✨ 订单挑战模式
+                  <span className="text-xs bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white px-2 py-0.5 rounded-full">
+                    NEW
+                  </span>
+                </h3>
+                <p className="text-violet-700 text-sm mb-2">
+                  每局随机生成 2~3 个经营委托目标，围绕具体指标进行策略安排。
+                  完成委托可获得额外奖励分数，全部达成还有加成倍数！
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="bg-violet-100 text-violet-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                    <Info className="w-3 h-3" /> 入场时间控制
+                  </span>
+                  <span className="bg-fuchsia-100 text-fuchsia-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                    <Info className="w-3 h-3" /> 工位恢复达标
+                  </span>
+                  <span className="bg-pink-100 text-pink-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                    <Info className="w-3 h-3" /> 事件零失误
+                  </span>
+                  <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                    <Info className="w-3 h-3" /> 助理高效调度
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
@@ -76,7 +123,8 @@ export const MainMenuPage = () => {
               <LevelCard
                 level={level}
                 highScore={highScores[level.id] || null}
-                onClick={() => handleLevelClick(level.id)}
+                onNormalPlay={() => handleNormalPlay(level.id)}
+                onChallengePlay={() => handleChallengePlay(level.id)}
               />
             </motion.div>
           ))}

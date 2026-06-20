@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
-import { Lightbulb, ArrowRight } from 'lucide-react';
+import { Lightbulb, ArrowRight, Sparkles } from 'lucide-react';
 
 interface SuggestionCardProps {
   suggestion: string;
   onPlayAgain: () => void;
   onBackToMenu: () => void;
+  isChallengeMode?: boolean;
 }
 
-export const SuggestionCard = ({ suggestion, onPlayAgain, onBackToMenu }: SuggestionCardProps) => {
+export const SuggestionCard = ({ suggestion, onPlayAgain, onBackToMenu, isChallengeMode = false }: SuggestionCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -28,13 +29,16 @@ export const SuggestionCard = ({ suggestion, onPlayAgain, onBackToMenu }: Sugges
       <div className="flex gap-4">
         <button
           onClick={onPlayAgain}
-          className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 text-white py-4 rounded-xl
+          className={`flex-1 text-white py-4 rounded-xl
                      font-bold text-lg flex items-center justify-center gap-2 shadow-lg
-                     hover:from-emerald-600 hover:to-green-600 transition-all duration-300
-                     transform hover:scale-105"
+                     transition-all duration-300 transform hover:scale-105 ${
+                       isChallengeMode
+                         ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600'
+                         : 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600'
+                     }`}
         >
-          <ArrowRight className="w-5 h-5" />
-          再玩一次
+          {isChallengeMode ? <Sparkles className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+          {isChallengeMode ? '再来一局挑战' : '再玩一次'}
         </button>
         <button
           onClick={onBackToMenu}

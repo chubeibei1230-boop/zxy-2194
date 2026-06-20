@@ -9,9 +9,11 @@ interface ScorePanelProps {
   highScore: ScoreResult | null;
   isNewHighScore: boolean;
   levelId?: number;
+  challengeBonus?: number;
+  showChallengeBonus?: boolean;
 }
 
-export const ScorePanel = ({ score, highScore, isNewHighScore, levelId }: ScorePanelProps) => {
+export const ScorePanel = ({ score, highScore, isNewHighScore, levelId, challengeBonus = 0, showChallengeBonus = false }: ScorePanelProps) => {
   const gradeColors: Record<string, string> = {
     S: 'from-yellow-400 to-amber-500',
     A: 'from-emerald-400 to-green-500',
@@ -159,16 +161,34 @@ export const ScorePanel = ({ score, highScore, isNewHighScore, levelId }: ScoreP
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex items-center justify-center gap-4"
+          className="flex flex-col items-center gap-3"
         >
           <div className="flex items-center gap-2">
             <Trophy className="w-8 h-8 text-yellow-500" />
-            <span className="text-3xl font-bold text-amber-800">
+            <span className="text-4xl font-black text-amber-800">
               {score.totalScore}分
             </span>
           </div>
+
+          {showChallengeBonus && challengeBonus > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.7, type: 'spring' }}
+              className="flex items-center gap-2 bg-gradient-to-r from-violet-100 to-fuchsia-100 px-4 py-2 rounded-xl border-2 border-violet-200"
+            >
+              <span className="text-lg">✨</span>
+              <span className="text-sm text-violet-700 font-semibold">
+                含经营委托奖励
+              </span>
+              <span className="text-lg font-black text-violet-600">
+                +{challengeBonus}
+              </span>
+            </motion.div>
+          )}
+
           {highScore && !isNewHighScore && (
-            <span className="text-amber-600">
+            <span className="text-amber-600 text-sm">
               历史最高: {highScore.totalScore}分
             </span>
           )}

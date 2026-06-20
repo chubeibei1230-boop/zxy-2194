@@ -7,6 +7,7 @@ import {
   Assistant,
   Task,
   GameEvent,
+  ChallengeResult,
 } from '../types';
 import { getLevelById } from '../data/levels';
 import { ASSISTANT_NAMES } from '../data/constants';
@@ -20,6 +21,12 @@ import {
   revertEventEffect,
 } from '../systems/eventSystem';
 import { calculateScore, getImprovementSuggestion } from '../systems/scoringSystem';
+import {
+  generateChallenges,
+  updateChallengeProgress,
+  finalizeChallengeResults,
+  calculateChallengeBonus,
+} from '../systems/challengeSystem';
 
 interface GameStore {
   gameState: GameState;
@@ -27,8 +34,11 @@ interface GameStore {
   lastScore: ScoreResult | null;
   lastEventTime: number;
   isNewHighScore: boolean;
+  challengeBonus: number;
+  lastChallengeResults: ChallengeResult[];
+  challengeModeEnabled: boolean;
 
-  startGame: (levelId: number) => void;
+  startGame: (levelId: number, challengeMode?: boolean) => void;
   pauseGame: () => void;
   resumeGame: () => void;
   restartGame: () => void;
@@ -44,9 +54,10 @@ interface GameStore {
 
   calculateFinalScore: () => ScoreResult;
   getSuggestion: () => string;
+  dismissChallengePreview: () => void;
 }
 
-const createInitialState = (level: LevelConfig): GameState => {
+const createInitialState = (level: LevelConfig, challengeMode: boolean): GameState => {
   const stations: Station[] = Array.from({ length: level.stations }, (_, i) => ({
     id: generateId(),
     number: i + 1,
@@ -65,9 +76,11 @@ const createInitialState = (level: LevelConfig): GameState => {
 
   const initialTasks = generateBatchTasks(1, stations.filter(s => s.status === 'needs-cleaning'), level.stations);
 
+  const challenges = challengeMode ? generateChallenges(level) : [];
+
   return {
     currentLevel: level,
-    gameStatus: 'playing',
+    gameStatus: challengeMode ? 'idle' : 'playing',
     currentBatch: 1,
     totalBatches: level.batches,
     elapsedTime: 0,
@@ -79,6 +92,12 @@ const createInitialState = (level: LevelConfig): GameState => {
     admissionTimes: [],
     totalStationsUsed: 0,
     totalStationsCleaned: 0,
+    gameMode: {
+      challengeMode,
+      challenges,
+      showChallengePreview: challengeMode,
+    },
+    challengeResults: [],
   };
 };
 
@@ -97,21 +116,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     admissionTimes: [],
     totalStationsUsed: 0,
     totalStationsCleaned: 0,
+    gameMode: {
+      challengeMode: false,
+      challenges: [],
+      showChallengePreview: false,
+    },
+    challengeResults: [],
   },
   highScores: loadHighScores(),
   lastScore: null,
   lastEventTime: 0,
   isNewHighScore: false,
+  challengeBonus: 0,
+  lastChallengeResults: [],
+  challengeModeEnabled: false,
 
-  startGame: (levelId: number) => {
+  startGame: (levelId: number, challengeMode: boolean = false) => {
     const level = getLevelById(levelId);
     if (!level) return;
 
     set({
-      gameState: createInitialState(level),
+      gameState: createInitialState(level, challengeMode),
       lastEventTime: 0,
       lastScore: null,
       isNewHighScore: false,
+      challengeBonus: 0,
+      lastChallengeResults: [],
+      challengeModeEnabled: challengeMode,
     });
   },
 
@@ -134,9 +165,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   restartGame: () => {
-    const { gameState } = get();
+    const { gameState, challengeModeEnabled } = get();
     if (gameState.currentLevel) {
-      get().startGame(gameState.currentLevel.id);
+      get().startGame(gameState.currentLevel.id, challengeModeEnabled);
     }
   },
 
@@ -145,14 +176,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const score = calculateScore(gameState);
     const isNew = saveHighScore(gameState.currentLevel!.id, score);
 
+    let challengeResults: ChallengeResult[] = [];
+    let challengeBonus = 0;
+    if (gameState.gameMode.challengeMode && gameState.gameMode.challenges.length > 0) {
+      challengeResults = finalizeChallengeResults(gameState.gameMode.challenges, gameState);
+      challengeBonus = calculateChallengeBonus(challengeResults);
+    }
+
     set((state) => ({
       gameState: {
         ...state.gameState,
         gameStatus: 'completed',
+        challengeResults,
       },
-      lastScore: score,
+      lastScore: {
+        ...score,
+        totalScore: Math.min(100, score.totalScore + challengeBonus),
+      },
       isNewHighScore: isNew,
       highScores: loadHighScores(),
+      lastChallengeResults: challengeResults,
+      challengeBonus,
+    }));
+  },
+
+  dismissChallengePreview: () => {
+    set((state) => ({
+      gameState: {
+        ...state.gameState,
+        gameStatus: 'playing',
+        gameMode: {
+          ...state.gameState.gameMode,
+          showChallengePreview: false,
+        },
+      },
     }));
   },
 
@@ -303,6 +360,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         totalStationsUsed,
         totalStationsCleaned,
         currentLevel,
+        gameMode,
       } = gameState;
 
       elapsedTime += deltaTime;
@@ -456,12 +514,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
-      const allDone =
-        currentBatch >= totalBatches &&
-        newTasks.every((t) => t.status === 'completed');
-
-      if (allDone) {
-        const score = calculateScore({
+      let updatedChallenges = gameMode.challenges;
+      if (gameMode.challengeMode && updatedChallenges.length > 0) {
+        const tempState = {
           ...gameState,
           elapsedTime,
           stations: newStations,
@@ -472,8 +527,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
           totalStationsUsed,
           totalStationsCleaned,
           currentBatch,
-        });
+        };
+        updatedChallenges = updateChallengeProgress(updatedChallenges, tempState);
+      }
+
+      const allDone =
+        currentBatch >= totalBatches &&
+        newTasks.every((t) => t.status === 'completed');
+
+      if (allDone) {
+        const finalState = {
+          ...gameState,
+          elapsedTime,
+          stations: newStations,
+          assistants: newAssistants,
+          taskQueue: newTasks,
+          eventLog,
+          admissionTimes,
+          totalStationsUsed,
+          totalStationsCleaned,
+          currentBatch,
+        };
+        const score = calculateScore(finalState);
         const isNew = saveHighScore(currentLevel!.id, score);
+
+        let challengeResults: ChallengeResult[] = [];
+        let challengeBonus = 0;
+        if (gameMode.challengeMode && updatedChallenges.length > 0) {
+          challengeResults = finalizeChallengeResults(updatedChallenges, finalState);
+          challengeBonus = calculateChallengeBonus(challengeResults);
+        }
+
+        const finalScore = {
+          ...score,
+          totalScore: Math.min(100, score.totalScore + challengeBonus),
+        };
 
         return {
           ...state,
@@ -490,10 +578,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
             totalStationsUsed,
             totalStationsCleaned,
             currentBatch,
+            gameMode: {
+              ...gameMode,
+              challenges: updatedChallenges,
+            },
+            challengeResults,
           },
-          lastScore: score,
+          lastScore: finalScore,
           isNewHighScore: isNew,
           highScores: loadHighScores(),
+          lastChallengeResults: challengeResults,
+          challengeBonus,
           lastEventTime: state.lastEventTime,
         };
       }
@@ -518,6 +613,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           totalStationsUsed,
           totalStationsCleaned,
           currentBatch,
+          gameMode: {
+            ...gameMode,
+            challenges: updatedChallenges,
+          },
         },
         lastEventTime: state.lastEventTime,
       };

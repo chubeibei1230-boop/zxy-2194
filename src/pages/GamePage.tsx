@@ -1,12 +1,14 @@
 import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users } from 'lucide-react';
+import { Users, BarChart3 } from 'lucide-react';
 import { GameHeader } from '../components/GameBoard/GameHeader';
 import { StationCard } from '../components/GameBoard/StationCard';
 import { TaskQueue } from '../components/GameBoard/TaskQueue';
 import { AssistantCard } from '../components/GameBoard/AssistantCard';
 import { EventContainer } from '../components/GameBoard/EventPopup';
+import { ChallengePreview } from '../components/GameBoard/ChallengePreview';
+import { ChallengeTracker } from '../components/GameBoard/ChallengeTracker';
 import { useGameStore } from '../store/useGameStore';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { getLevelById } from '../data/levels';
@@ -14,7 +16,7 @@ import { getLevelById } from '../data/levels';
 export const GamePage = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
-  const { gameState, startGame, pauseGame, resumeGame } = useGameStore();
+  const { gameState, startGame, pauseGame, resumeGame, challengeModeEnabled } = useGameStore();
   
   useGameEngine();
 
@@ -25,9 +27,11 @@ export const GamePage = () => {
         navigate('/');
         return;
       }
-      startGame(parseInt(levelId));
+      if (gameState.gameStatus === 'idle' && gameState.currentLevel === null) {
+        startGame(parseInt(levelId), challengeModeEnabled);
+      }
     }
-  }, [levelId, startGame, navigate]);
+  }, [levelId, startGame, navigate, gameState.gameStatus, gameState.currentLevel, challengeModeEnabled]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.code === 'Space') {
@@ -71,6 +75,16 @@ export const GamePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-amber-100 via-orange-50 to-amber-100 p-6">
       <div className="max-w-7xl mx-auto">
         <GameHeader />
+
+        {gameState.gameMode.challengeMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <ChallengeTracker />
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <motion.div
@@ -117,7 +131,10 @@ export const GamePage = () => {
             className="lg:col-span-1"
           >
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 shadow-lg border-2 border-amber-200">
-              <h2 className="text-xl font-bold text-amber-900 mb-4">📊 实时统计</h2>
+              <h2 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-6 h-6" />
+                实时统计
+              </h2>
               <div className="space-y-4">
                 <div className="bg-white rounded-xl p-4 shadow-sm">
                   <p className="text-sm text-amber-600 mb-1">工位恢复率</p>
@@ -155,6 +172,7 @@ export const GamePage = () => {
       </div>
 
       <EventContainer />
+      <ChallengePreview />
     </div>
   );
 };

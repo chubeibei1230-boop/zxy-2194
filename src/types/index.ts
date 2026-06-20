@@ -12,6 +12,15 @@ export type EventFrequency = 'low' | 'medium' | 'high' | 'extreme';
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D';
 
+export type ChallengeType =
+  | 'batch-admission-time'
+  | 'max-missed-events'
+  | 'station-recovery-rate'
+  | 'assistant-high-efficiency'
+  | 'total-time-budget'
+  | 'zero-admission-delay'
+  | 'min-assistant-idle';
+
 export interface Task {
   id: string;
   type: TaskType;
@@ -108,6 +117,8 @@ export interface GameState {
   admissionTimes: AdmissionTime[];
   totalStationsUsed: number;
   totalStationsCleaned: number;
+  gameMode: GameModeConfig;
+  challengeResults: ChallengeResult[];
 }
 
 export interface TaskConfig {
@@ -116,4 +127,32 @@ export interface TaskConfig {
   name: string;
   icon: string;
   color: string;
+}
+
+export interface Challenge {
+  id: string;
+  type: ChallengeType;
+  title: string;
+  description: string;
+  icon: string;
+  targetValue: number;
+  unit: string;
+  currentValue: number;
+  isCompleted: boolean;
+  rewardText: string;
+  bonusScore: number;
+}
+
+export interface ChallengeResult {
+  challenge: Challenge;
+  achieved: boolean;
+  finalValue: number;
+}
+
+export type ChallengeRating = 'none' | 'bronze' | 'silver' | 'gold' | 'perfect';
+
+export interface GameModeConfig {
+  challengeMode: boolean;
+  challenges: Challenge[];
+  showChallengePreview: boolean;
 }
